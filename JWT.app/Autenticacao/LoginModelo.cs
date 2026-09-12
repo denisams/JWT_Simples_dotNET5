@@ -5,9 +5,9 @@ namespace JWT.app.Autenticacao
     public class LoginModelo
     {
         [Required(ErrorMessage = "Nome é obrigatório")]
-        public string NomeUsuario { get; set; }
+        public string NomeUsuario { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Senha é obrigatória")]
-        public string Senha { get; set; }
+        public string Senha { get; set; } = string.Empty;
     }
 }

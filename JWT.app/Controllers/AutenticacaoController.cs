@@ -1,15 +1,6 @@
-﻿using JWT.app.Autenticacao;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
+using JWT.app.Autenticacao;
+using JWT.app.Servicos;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace JWT.app.Controllers
 {
@@ -17,76 +8,35 @@ namespace JWT.app.Controllers
     [ApiController]
     public class AutenticacaoController : ControllerBase
     {
-        private readonly UserManager<AplicacaoUsuario> gerenciadorUsuario;
-        private readonly IConfiguration _configuracao;
+        private readonly IServicoAutenticacao _servicoAutenticacao;
 
-        public AutenticacaoController(UserManager<AplicacaoUsuario> gerenciadorUsuario, IConfiguration configuracao)
+        public AutenticacaoController(IServicoAutenticacao servicoAutenticacao)
         {
-            this.gerenciadorUsuario = gerenciadorUsuario;
-            _configuracao = configuracao;
+            _servicoAutenticacao = servicoAutenticacao;
         }
 
-
-        [HttpPost]
-        [Route("login")]
-        public async Task<IActionResult> Login([FromBody] LoginModelo model)
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginModelo modelo)
         {
-            var user = await gerenciadorUsuario.FindByNameAsync(model.NomeUsuario);
-            if (user != null && await gerenciadorUsuario.CheckPasswordAsync(user, model.Senha))
+            var resultado = await _servicoAutenticacao.AutenticarAsync(modelo);
+            if (resultado is null)
             {
-                var userRoles = await gerenciadorUsuario.GetRolesAsync(user);
-
-                var authClaims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, user.UserName),
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                };
-
-                foreach (var userRole in userRoles)
-                {
-                    authClaims.Add(new Claim(ClaimTypes.Role, userRole));
-                }
-
-                var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuracao["JWT:Secret"]));
-
-                var token = new JwtSecurityToken(
-                    issuer: _configuracao["JWT:ValidIssuer"],
-                    audience: _configuracao["JWT:ValidAudience"],
-                    expires: DateTime.Now.AddHours(3),
-                    claims: authClaims,
-                    signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
-                    );
-
-                return Ok(new
-                {
-                    token = new JwtSecurityTokenHandler().WriteToken(token),
-                    expiration = token.ValidTo
-                });
+                return Unauthorized();
             }
-            return Unauthorized();
+
+            return Ok(resultado);
         }
 
-
-        [HttpPost]
-        [Route("cadastro")]
-        public async Task<IActionResult> Register([FromBody] CadastroModelo model)
+        [HttpPost("cadastro")]
+        public async Task<IActionResult> Cadastrar([FromBody] CadastroModelo modelo)
         {
-            var userExists = await gerenciadorUsuario.FindByNameAsync(model.NomeUsuario);
-            if (userExists != null)
-                return StatusCode(StatusCodes.Status500InternalServerError, new Resposta { Status = "Erro", Mensagem = "Usuário já existe!" });
-
-            AplicacaoUsuario user = new AplicacaoUsuario()
+            var resultado = await _servicoAutenticacao.RegistrarAsync(modelo);
+            if (!resultado.Sucesso)
             {
-                Email = model.Email,
-                SecurityStamp = Guid.NewGuid().ToString(),
-                UserName = model.NomeUsuario
-            };
-            var result = await gerenciadorUsuario.CreateAsync(user, model.Senha);
-            if (!result.Succeeded)
-                return StatusCode(StatusCodes.Status500InternalServerError, new Resposta { Status = "Erro", Mensagem = "Falha! Favor tentar cadastrar novamente." });
+                return BadRequest(new Resposta { Status = "Erro", Mensagem = resultado.Mensagem });
+            }
 
-            return Ok(new Resposta { Status = "Sucesso", Mensagem = "Usuário criado com sucesso!" });
+            return Ok(new Resposta { Status = "Sucesso", Mensagem = resultado.Mensagem });
         }
-
     }
 }
