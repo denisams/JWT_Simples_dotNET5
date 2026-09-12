@@ -18,9 +18,9 @@ dotnet user-secrets set "JWT:ChaveSecreta" "uma-chave-bem-grande-e-aleatoria-com
 
 Em produção, defina via variável de ambiente (`JWT__ChaveSecreta`) ou outro cofre de segredos (Azure Key Vault, etc).
 
-## Connection string
+## String de conexão
 
-A connection string fica em `appsettings.json`, seção `ConnectionStrings:ConnStr`. Ajuste para o seu servidor/instância antes de rodar as migrations.
+A string de conexão fica em `appsettings.json`, seção `ConnectionStrings:ConnStr`. Ajuste para o seu servidor/instância antes de rodar as migrations.
 
 ## Rodando as migrations
 
